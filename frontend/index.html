@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LBS Universal Translator</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+  <script src="/static/app.js" defer></script>
+</head>
+<body data-page="home">
+  <div class="bg-grain" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-kicker">LBS Project</span>
+      <h1 class="brand-title">EnRoute</h1>
+    </div>
+    <nav class="top-links">
+      <a href="https://opentraits.org/datasets/avonet.html" target="_blank" rel="noreferrer"> AVONET</a>
+      <a href="https://www.movebank.org/" target="_blank" rel="noreferrer">Movebank</a>
+    </nav>
+  </header>
+
+  <main class="content-grid">
+    <section class="panel info">
+      <div class="panel-header">
+        <h2>What This Site Does</h2>
+      </div>
+
+      <div class="info-grid">
+        <div class="card">
+          <h3>How It Works</h3>
+          <ul class="notes">
+            <li>Upload a Movebank tracking CSV</li>
+            <li>Species name matches to AVONET traits</li>
+            <li>The system computes cost of transport</li>
+            <li>Visualization after data is matched</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h3>Key Variables</h3>
+          <ul class="notes">
+            <li>Track: Latitude, Longitude, Timestamp, Ground Speed.</li>
+            <li>Traits: Mass (g), Wing Length (mm), Hand-Wing Index.</li>
+            <li>Derived: Wing Span (m), Aspect Ratio, Wing Area (m&sup2;).</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h3>Core Formulae</h3>
+          <div class="formula-block">
+            <div class="equation"><i>AR</i> = 2.04 ln(<i>HWI</i>) + 2.58</div>
+            <div class="equation"><i>S</i> = <i>b</i>² / <i>AR</i></div>
+            <div class="equation">COT<sub>d</sub> = P<sub>total</sub> / V</div>
+          </div>
+          <p class="hint">Full aerodynamic terms are applied in the backend calculation.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel controls">
+      <div class="panel-header">
+        <h2>Data Intake</h2>
+      </div>
+
+      <label class="field">
+        <span>Upload Tracking data</span>
+        <input id="file-input" type="file" accept=".csv" />
+      </label>
+
+      <label class="field">
+        <input id="species-name-input" type="text" placeholder="Species name (common or scientific)" />
+      </label>
+
+        <div class="card">
+          <h3>Backend Calculation</h3>
+          <p class="muted">Send the track to FastAPI for the full energetics engine.</p>
+          <button id="backend-run" class="primary" type="button">Run</button>
+          <small class="hint" id="backend-status">Awaiting upload.</small>
+        </div>
+
+      <div class="card">
+        <h3>Visualization</h3>
+        <p class="muted">The map appears on a separate page once ready.</p>
+        <a id="visualize-link" class="primary disabled" href="visualize.html" aria-disabled="true">Open Visualization</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="photo-credit">Photo by <a href="https://unsplash.com/@timothycdykes?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText" target="_blank" rel="noreferrer">Timothy Dykes</a> on <a href="https://unsplash.com/photos/selective-focus-photography-of-red-cardinal-on-tree-_aNtQKnffAA?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText" target="_blank" rel="noreferrer">Unsplash</a></footer>
+</body>
+</html>

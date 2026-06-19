@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LBS — Flight Visualization</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/visualize.css" />
+
+  <!-- React 18 -->
+  <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+
+  <!-- PropTypes (required by Recharts) -->
+  <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
+
+  <!-- Babel standalone (JSX transpilation) -->
+  <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+
+  <!-- Deck.gl (WebGL map layers) -->
+  <script src="https://unpkg.com/deck.gl@8.9.36/dist.min.js"></script>
+
+  <!-- Recharts (analytics charts) -->
+  <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+  "use strict";
+
+  /* ─────────────────────────────────────────────────────────────
+     Globals: React, ReactDOM, deck (deck.gl), Recharts
+  ───────────────────────────────────────────────────────────── */
+  const { useState, useEffect, useLayoutEffect, useRef, useMemo } = React;
+  const {
+    AreaChart, Area,
+    XAxis, YAxis,
+    CartesianGrid, Tooltip,
+    ResponsiveContainer
+  } = Recharts;
+
+  const STORAGE_KEY = "lbsVisualizationPayload";
+
+  /* ─── Colour constants (deck.gl RGBA) ─────────────────────── */
+  const AMBER       = [214, 163, 84];
+  const AMBER_GLOW  = [214, 163, 84, 38];
+  const GREEN       = [80, 220, 120];
+  const RED         = [220, 70, 70];
+  const WHITE_A     = [255, 255, 255, 160];
+
+  /* ─── Helpers ─────────────────────────────────────────────── */
+  const fmtNum = (n, d = 1) =>
+    n != null && Number.isFinite(+n) ? (+n).toFixed(d) : "—";
+
+  const fmtInt = n =>
+    n != null && Number.isFinite(+n)
+      ? Math.round(+n).toLocaleString()
+      : "—";
+
+  /* Auto-scale energy: J → kJ / MJ / GJ */
+  const fmtEnergy = joules => {
+    if (joules == null || !Number.isFinite(+joules)) return { val: "—", unit: "kJ" };
+    const j = +joules;
+    if (j >= 1e9)  return { val: (j / 1e9).toFixed(2),  unit: "GJ" };
+    if (j >= 1e6)  return { val: (j / 1e6).toFixed(1),  unit: "MJ" };
+    return             { val: (j / 1e3).toFixed(1),  unit: "kJ" };
+  };
+
+  /* Format an ISO timestamp string as "Jun 14, 2014 · 11:00 UTC" */
+  const fmtDate = t => {
+    if (!t) return "—";
+    try {
+      const d = new Date(t);
+      if (isNaN(d.getTime())) return String(t).slice(0, 16);
+      return d.toLocaleDateString("en-US", {
+        month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
+      }) + " · " + d.toISOString().slice(11, 16) + " UTC";
+    } catch (_) { return String(t).slice(0, 16); }
+  };
+
+  function autoZoom(minLon, maxLon, minLat, maxLat) {
+    const span = Math.max(maxLon - minLon, maxLat - minLat, 0.001);
+    return Math.max(2, Math.min(13, Math.log2(360 / span) - 0.5));
+  }
+
+  /* Haversine distance in metres between two {lat,lon} points */
+  const haversineM = (a, b) => {
+    const toRad = d => (d * Math.PI) / 180;
+    const dLat = toRad(b.lat - a.lat);
+    const dLon = toRad(b.lon - a.lon);
+    const x = Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLon / 2) ** 2;
+    return 2 * 6_371_000 * Math.asin(Math.sqrt(x));
+  };
+
+  /* Energy t∈[0,1] → RGBA: teal → amber → red */
+  const energyColor = (t, alpha = 220) => {
+    if (t < 0.5) {
+      const f = t * 2;
+      return [Math.round(40 + f * 174), Math.round(180 - f * 17), Math.round(130 - f * 46), alpha];
+    }
+    const f = (t - 0.5) * 2;
+    return [Math.round(214 + f * 6), Math.round(163 - f * 93), Math.round(84 - f * 24), alpha];
+  };
+
+  /* Build speed + distance + cumulative-energy series from GPS rows */
+  function buildChartData(rows, cotJperM) {
+    const cot = cotJperM && Number.isFinite(+cotJperM) ? +cotJperM : 0;
+    let cumDist = 0, cumEnergy = 0;
+    const speed = [], distance = [], energy = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      if (r.speed != null && r.speed > 0) {
+        speed.push({ i, kph: +((r.speed * 3.6).toFixed(2)) });
+      }
+      if (i > 0) {
+        const d = haversineM(rows[i - 1], r);
+        cumDist   += d;
+        cumEnergy += cot * d;
+      }
+      distance.push({ i, km: +((cumDist   / 1000).toFixed(3)) });
+      energy.push(  { i, kj: +((cumEnergy / 1000).toFixed(3)) });
+    }
+    return { speed, distance, energy };
+  }
+
+  /* ─── TrajectoryMap ───────────────────────────────────────── */
+  function TrajectoryMap({ gpsRows, sliderIdx, cotJperM }) {
+    const containerRef = useRef(null);
+    const deckRef = useRef(null);
+
+    function buildLayers(visible) {
+      const baseTile = new deck.TileLayer({
+        id: "basemap",
+        data: "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+        minZoom: 0, maxZoom: 19, tileSize: 256,
+        renderSubLayers: props => {
+          const { bbox: { west, south, east, north } } = props.tile;
+          return new deck.BitmapLayer(props, {
+            data: null, image: props.data,
+            bounds: [west, south, east, north],
+          });
+        },
+      });
+
+      /* Always show the basemap — even with 0 or 1 visible point */
+      if (!visible || visible.length === 0) return [baseTile];
+
+      /* Single point: show start marker only */
+      if (visible.length === 1) {
+        return [baseTile, new deck.ScatterplotLayer({
+          id: "endpoints",
+          data: [{ position: [visible[0].lon, visible[0].lat], color: GREEN }],
+          getPosition: d => d.position, getFillColor: d => d.color,
+          getRadius: 9, radiusUnits: "pixels",
+          stroked: true, lineWidthMinPixels: 2, getLineColor: WHITE_A,
+        })];
+      }
+
+      const path = visible.map(r => [r.lon, r.lat]);
+      const cot = cotJperM && Number.isFinite(+cotJperM) ? +cotJperM : 0;
+      const segments = [];
+      let maxE = 1e-9;
+      for (let i = 1; i < visible.length; i++) {
+        const e = cot * haversineM(visible[i - 1], visible[i]);
+        segments.push({ path: [path[i - 1], path[i]], e });
+        if (e > maxE) maxE = e;
+      }
+      return [
+        baseTile,
+        new deck.PathLayer({
+          id: "glow",
+          data: [{ path }],
+          getPath: d => d.path,
+          getColor: AMBER_GLOW,
+          getWidth: 18, widthMinPixels: 14,
+          jointRounded: true, capRounded: true,
+        }),
+        new deck.PathLayer({
+          id: "energy-track",
+          data: segments,
+          getPath: d => d.path,
+          getColor: d => energyColor(d.e / maxE),
+          getWidth: 3, widthMinPixels: 2, widthMaxPixels: 6,
+          jointRounded: true, capRounded: true,
+        }),
+        new deck.ScatterplotLayer({
+          id: "endpoints",
+          data: [
+            { position: path[0],               color: GREEN },
+            { position: path[path.length - 1], color: RED   },
+          ],
+          getPosition: d => d.position, getFillColor: d => d.color,
+          getRadius: 9, radiusUnits: "pixels",
+          stroked: true, lineWidthMinPixels: 2, getLineColor: WHITE_A,
+        }),
+      ];
+    }
+
+    /* Initialise Deck.gl when gpsRows changes (new analysis loaded) */
+    useLayoutEffect(() => {
+      const el = containerRef.current;
+      if (!el || !gpsRows || gpsRows.length < 2) return;
+
+      const allPath = gpsRows.map(r => [r.lon, r.lat]);
+      const lons = allPath.map(p => p[0]);
+      const lats = allPath.map(p => p[1]);
+      const minLon = Math.min(...lons), maxLon = Math.max(...lons);
+      const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+
+      deckRef.current = new deck.Deck({
+        parent: el,
+        width:  el.offsetWidth  || window.innerWidth,
+        height: el.offsetHeight || window.innerHeight,
+        initialViewState: {
+          longitude: (minLon + maxLon) / 2,
+          latitude:  (minLat + maxLat) / 2,
+          zoom:      autoZoom(minLon, maxLon, minLat, maxLat),
+          pitch: 22, bearing: 0,
+        },
+        controller: true,
+        layers: buildLayers(gpsRows.slice(0, sliderIdx + 1)),
+      });
+
+      const ro = new ResizeObserver(([entry]) => {
+        const { width, height } = entry.contentRect;
+        deckRef.current?.setProps({ width, height });
+      });
+      ro.observe(el);
+
+      return () => {
+        ro.disconnect();
+        deckRef.current?.finalize();
+        deckRef.current = null;
+      };
+    }, [gpsRows]);
+
+    /* Update layers only (no view-state reset) when slider or CoT changes */
+    useEffect(() => {
+      if (!deckRef.current || !gpsRows || gpsRows.length < 2) return;
+      deckRef.current.setProps({ layers: buildLayers(gpsRows.slice(0, sliderIdx + 1)) });
+    }, [sliderIdx, cotJperM]);
+
+    if (!gpsRows || gpsRows.length < 2) {
+      return (
+        <div className="map-empty">
+          <p>No GPS track data available.</p>
+        </div>
+      );
+    }
+
+    return <div ref={containerRef} className="map-container" />;
+  }
+
+  /* ─── KPI Card ────────────────────────────────────────────── */
+  function KpiCard({ label, value, unit, accent }) {
+    return (
+      <div className="kpi-card">
+        <span className="kpi-label">{label}</span>
+        <span className={`kpi-value${accent ? " kpi-accent" : ""}`}>
+          {value}
+        </span>
+        {unit && <span className="kpi-unit">{unit}</span>}
+      </div>
+    );
+  }
+
+  /* ─── Shared chart tooltip style ─────────────────────────── */
+  const TIP_STYLE = {
+    background:   "#182019",
+    border:       "1px solid rgba(255,255,255,0.08)",
+    borderRadius: 8,
+    fontSize:     11,
+    color:        "#c0cfc5",
+  };
+
+  /* ─── Sidebar ─────────────────────────────────────────────── */
+  function Sidebar({ payload, chartData, sliderIdx }) {
+    /* Slice every series to the visible range */
+    const speedVis  = chartData.speed.filter(d => d.i <= sliderIdx);
+    const distVis   = chartData.distance.filter(d => d.i <= sliderIdx);
+    const energyVis = chartData.energy.filter(d => d.i <= sliderIdx);
+
+    /* Scale factors: calibrate front-end haversine totals (from downsampled points)
+       to match the backend's authoritative full-track totals. This corrects the
+       systematic underestimate caused by skipping intermediate GPS fixes. */
+    const fullDistKm   = chartData.distance.length > 0
+      ? chartData.distance[chartData.distance.length - 1].km : 1;
+    const fullEnergyKj = chartData.energy.length   > 0
+      ? chartData.energy[chartData.energy.length   - 1].kj : 1;
+    const backendDistKm   = payload.total_distance_m / 1000;
+    const backendEnergyKj = payload.total_energy_j   / 1000;
+    const distScale   = fullDistKm   > 0 ? backendDistKm   / fullDistKm   : 1;
+    const energyScale = fullEnergyKj > 0 ? backendEnergyKj / fullEnergyKj : 1;
+
+    /* Scale the visible chart data so Y-axis values match backend totals */
+    const distScaled   = distVis.map(d   => ({ ...d,  km: +(d.km  * distScale).toFixed(3)  }));
+    const energyScaled = energyVis.map(d => ({ ...d,  kj: +(d.kj  * energyScale).toFixed(3)}));
+
+    /* Running totals at the current slider position (calibrated) */
+    const runDistKm  = distScaled.length   > 0 ? distScaled[distScaled.length     - 1].km : 0;
+    const runEnergyJ = energyScaled.length > 0 ? energyScaled[energyScaled.length - 1].kj * 1000 : 0;
+    const energy     = fmtEnergy(runEnergyJ);
+
+    return (
+      <aside className="sidebar">
+
+        {/* ── KPIs ── */}
+        <div className="kpi-grid">
+          <KpiCard label="Points"   value={fmtInt(sliderIdx + 1)} />
+          <KpiCard label="Distance" value={fmtNum(runDistKm)}      unit="km" />
+          <KpiCard label="Energy"   value={energy.val}             unit={energy.unit} accent />
+          <KpiCard label="Mean CoT" value={fmtNum(payload.mean_cot_j_m, 2)} unit="J/m" />
+        </div>
+
+        {/* ── Speed chart ── */}
+        {speedVis.length > 1 && (
+          <div className="chart-block">
+            <p className="chart-label">Ground Speed — km/h</p>
+            <ResponsiveContainer width="100%" height={130}>
+              <AreaChart
+                data={speedVis}
+                margin={{ top: 4, right: 8, left: -8, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="#d6a354" stopOpacity={0.28} />
+                    <stop offset="95%" stopColor="#d6a354" stopOpacity={0}    />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="i" hide />
+                <YAxis tick={{ fill: "#6c7a74", fontSize: 10 }} />
+                <Tooltip
+                  contentStyle={TIP_STYLE}
+                  labelFormatter={() => ""}
+                  formatter={v => [`${v} km/h`, "Speed"]}
+                />
+                <Area
+                  type="monotone" dataKey="kph"
+                  stroke="#d6a354" fill="url(#sg)"
+                  strokeWidth={2} dot={false}
+                  isAnimationActive={false}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {/* ── Cumulative distance chart ── */}
+        {distScaled.length > 1 && (
+          <div className="chart-block">
+            <p className="chart-label">Cumulative Distance — km</p>
+            <ResponsiveContainer width="100%" height={110}>
+              <AreaChart
+                data={distScaled}
+                margin={{ top: 4, right: 8, left: -8, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient id="dg" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="#6c825c" stopOpacity={0.28} />
+                    <stop offset="95%" stopColor="#6c825c" stopOpacity={0}    />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="i" hide />
+                <YAxis tick={{ fill: "#6c7a74", fontSize: 10 }} />
+                <Tooltip
+                  contentStyle={TIP_STYLE}
+                  labelFormatter={() => ""}
+                  formatter={v => [`${v} km`, "Distance"]}
+                />
+                <Area
+                  type="monotone" dataKey="km"
+                  stroke="#6c825c" fill="url(#dg)"
+                  strokeWidth={2} dot={false}
+                  isAnimationActive={false}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {/* ── Cumulative energy chart ── */}
+        {energyScaled.length > 1 && (
+          <div className="chart-block">
+            <p className="chart-label">Cumulative Energy — kJ</p>
+            <ResponsiveContainer width="100%" height={110}>
+              <AreaChart
+                data={energyScaled}
+                margin={{ top: 4, right: 8, left: -8, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient id="eg" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="#d65048" stopOpacity={0.30} />
+                    <stop offset="95%" stopColor="#d65048" stopOpacity={0}    />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="i" hide />
+                <YAxis tick={{ fill: "#6c7a74", fontSize: 10 }} />
+                <Tooltip
+                  contentStyle={TIP_STYLE}
+                  labelFormatter={() => ""}
+                  formatter={v => [`${v} kJ`, "Energy"]}
+                />
+                <Area
+                  type="monotone" dataKey="kj"
+                  stroke="#d65048" fill="url(#eg)"
+                  strokeWidth={2} dot={false}
+                  isAnimationActive={false}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {/* ── Map legend ── */}
+        <div className="map-legend">
+          <div className="legend-item">
+            <span className="legend-dot" style={{ background: "rgb(80,220,120)" }} />
+            <span>Start</span>
+          </div>
+          <div className="legend-item">
+            <span className="legend-dot" style={{ background: "rgb(220,70,70)" }} />
+            <span>End</span>
+          </div>
+          <div className="legend-item">
+            <span className="legend-energy" />
+            <span>Energy (low→high)</span>
+          </div>
+        </div>
+
+      </aside>
+    );
+  }
+
+  /* ─── Header ──────────────────────────────────────────────── */
+  function Header({ species }) {
+    return (
+      <header className="viz-header">
+        <div className="header-left">
+          <a href="/" className="back-link">← Back</a>
+          <div className="header-brand">
+            <span className="header-kicker">LBS EnRoute</span>
+            <h1 className="header-title">Flight Visualization</h1>
+          </div>
+        </div>
+        {species && (
+          <span className="header-species">{species}</span>
+        )}
+      </header>
+    );
+  }
+
+  /* ─── No Data fallback ────────────────────────────────────── */
+  function NoData() {
+    return (
+      <div className="no-data">
+        <div className="no-data-card">
+          <p className="no-data-heading">No Analysis Data</p>
+          <p className="no-data-sub">
+            Run the backend analysis on the home page first.
+          </p>
+          <a href="index.html" className="no-data-btn">← Return Home</a>
+        </div>
+      </div>
+    );
+  }
+
+  /* ─── App root ────────────────────────────────────────────── */
+  function App() {
+    const payload = useMemo(() => {
+      try {
+        const raw = sessionStorage.getItem(STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : null;
+        console.log("[LBS visualize] raw sessionStorage keys:", parsed ? Object.keys(parsed) : null);
+        console.log("[LBS visualize] gpsRows length:", parsed?.gpsRows?.length ?? "missing");
+        console.log("[LBS visualize] first gpsRow:", parsed?.gpsRows?.[0]);
+        return parsed;
+      } catch (e) {
+        console.error("[LBS visualize] failed to parse sessionStorage:", e);
+        return null;
+      }
+    }, []);
+
+    /* Slider: Infinity = show all points (default) */
+    const [sliderIdx, setSliderIdx] = useState(Infinity);
+
+    if (!payload) return <NoData />;
+
+    /* Support both new key (gpsRows) and old key (rows) for backwards compat */
+    const gpsRows = useMemo(() => {
+      const raw = payload.gpsRows || payload.rows || [];
+      return raw
+        .map(r => ({
+          lat:   +(r.lat   ?? r.__lat),
+          lon:   +(r.lon   ?? r.__lon),
+          time:    r.time  ?? r.__time ?? null,
+          speed:   r.speed ?? r.__speed ?? null
+        }))
+        .filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lon));
+    }, [payload]);
+
+    const effectiveIdx = Math.min(Math.floor(sliderIdx), gpsRows.length - 1);
+    const chartData = useMemo(
+      () => buildChartData(gpsRows, payload.mean_cot_j_m),
+      [gpsRows]
+    );
+
+    return (
+      <div className="viz-root">
+        <Header species={payload.species} />
+        <div className="viz-body">
+          <Sidebar payload={payload} chartData={chartData} sliderIdx={effectiveIdx} />
+          <main className="viz-main">
+            <TrajectoryMap
+              gpsRows={gpsRows}
+              sliderIdx={effectiveIdx}
+              cotJperM={payload.mean_cot_j_m}
+            />
+            {gpsRows.length > 1 && (
+              <div className="time-slider-bar">
+                <span className="slider-counter">
+                  {fmtDate(gpsRows[effectiveIdx]?.time)}
+                </span>
+                <input
+                  type="range"
+                  min={0}
+                  max={gpsRows.length - 1}
+                  value={effectiveIdx}
+                  onChange={e => setSliderIdx(+e.target.value)}
+                  className="time-slider"
+                />
+              </div>
+            )}
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  /* ─── Mount ───────────────────────────────────────────────── */
+  ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

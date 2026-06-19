@@ -1,0 +1,540 @@
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap");
+
+:root {
+  --ink: #1d241f;
+  --muted: #4c5a50;
+  --forest: #254637;
+  --moss: #6c825c;
+  --sun: #d6a354;
+  --clay: #b6653d;
+  --mist: #f3efe7;
+  --paper: rgba(255, 255, 255, 0.68);
+  --glass: rgba(255, 255, 255, 0.4);
+  --stroke: rgba(34, 44, 38, 0.12);
+  --shadow: 0 30px 80px rgba(13, 19, 16, 0.18);
+  --radius: 22px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Space Grotesk", sans-serif;
+  color: var(--ink);
+  background-color: #1f2321;
+  min-height: 100vh;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: url("images/timothy-dykes-_aNtQKnffAA-unsplash.jpg");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-attachment: fixed;
+  filter: contrast(1.12) saturate(1.06) brightness(1.02);
+  transform: translateZ(0);
+  z-index: 0;
+}
+
+@media (max-width: 720px) {
+  body {
+    background-attachment: scroll;
+  }
+
+  body::before {
+    background-attachment: scroll;
+  }
+}
+
+.bg-grain {
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+    pointer-events: none;
+    mix-blend-mode: multiply;
+    z-index: 0;
+}
+
+.topbar {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 28px 6vw 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.brand-kicker {
+  text-transform: uppercase;
+  letter-spacing: 0.26em;
+  font-size: 0.7rem;
+  color: var(--clay);
+  text-shadow: 0 2px 10px rgba(10, 12, 10, 0.55);
+}
+
+.brand-title {
+  font-family: "Cormorant Garamond", serif;
+  font-size: clamp(5rem, 10vw, 10rem);
+  margin: 0;
+  letter-spacing: 0.15em;
+  text-shadow:
+    0 2px 10px rgba(255, 226, 171, 0.5),
+    0 8px 26px rgba(255, 199, 122, 0.55),
+    0 18px 46px rgba(255, 190, 120, 0.35),
+    0 22px 52px rgba(8, 10, 9, 0.6);
+}
+
+
+
+.top-links {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 0.9rem;
+}
+
+.top-links a {
+  color: var(--forest);
+  text-decoration: none;
+  font-weight: 600;
+  text-shadow: 0 2px 10px rgba(10, 12, 10, 0.5);
+}
+
+.top-links a:hover {
+  text-decoration: underline;
+}
+
+.hero {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 22px 6vw 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 24px;
+  align-items: stretch;
+}
+
+.hero-copy {
+  background: var(--paper);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 28px;
+  border: 1px solid var(--stroke);
+  backdrop-filter: blur(6px);
+  animation: rise 0.8s ease-out;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hero-label {
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  font-size: 0.7rem;
+  color: var(--clay);
+  margin: 0;
+}
+
+.hero-text {
+  margin: 0;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+
+.hero-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.stat-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.stat-value {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-top: 6px;
+  display: block;
+  color: var(--forest);
+}
+
+.label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.value {
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin-top: 6px;
+  display: block;
+  color: var(--forest);
+}
+
+.hero-visual {
+  position: relative;
+  border-radius: var(--radius);
+  padding: 24px;
+  background: linear-gradient(145deg, rgba(26, 38, 50, 0.96), rgba(52, 74, 78, 0.9));
+  color: #f8f4ed;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  box-shadow: var(--shadow);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.hero-visual svg {
+  width: 100%;
+  height: auto;
+}
+
+.hero-orb {
+  position: absolute;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(214, 163, 84, 0.75), transparent 65%);
+  top: -40px;
+  right: -30px;
+  opacity: 0.8;
+  animation: pulse 6s ease-in-out infinite;
+}
+
+.content-grid {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 28px auto 0;
+  padding: 0 6vw;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+}
+
+.panel {
+  background: transparent;
+  border-radius: var(--radius);
+  padding: 24px;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.panel-header h2 {
+  margin: 0 0 6px;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+  text-shadow:
+      0 2px 10px rgba(255, 226, 171, 0.5),
+      0 8px 26px rgba(255, 199, 122, 0.55),
+      0 18px 46px rgba(255, 190, 120, 0.35),
+      0 22px 52px rgba(8, 10, 9, 0.6);
+}
+
+.muted {
+  margin: 0 0 16px;
+  color: var(--muted);
+}
+
+.info-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.formula-block {
+  display: grid;
+  gap: 8px;
+}
+
+.form-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.95rem;
+}
+
+.field input,
+.field select {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(40, 52, 44, 0.2);
+  font-family: inherit;
+  font-size: 1rem;
+  background: #fff;
+}
+
+/* This targets ONLY the span label that belongs to the species field */
+.field:has(#species-name-input) span {
+  color: var(--moss);
+  /* Or use var(--forest), var(--moss), etc. */
+  font-weight: 400;
+  /* Makes it pop a bit more */
+}
+
+.field:has(#file-input) span {
+  color: var(--moss);
+  font-weight: 400;
+}
+
+.field-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.field {
+  margin-bottom: 16px;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.mono {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.85rem;
+}
+
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.primary {
+  appearance: none;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-family: inherit;
+  font-weight: 600;
+  color: #1a1e1b;
+  background: linear-gradient(140deg, #e4c484, #c47b48);
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(180, 109, 62, 0.35);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.primary.disabled,
+.primary[aria-disabled="true"] {
+  opacity: 0.6;
+  pointer-events: none;
+  box-shadow: none;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.62);
+  border-radius: 16px;
+  padding: 16px;
+  border: 1px solid rgba(37, 70, 55, 0.18);
+  box-shadow: 0 18px 40px rgba(18, 24, 20, 0.1);
+}
+
+.card h3 {
+  margin: 0 0 8px;
+  font-family: "Cormorant Garamond", serif;
+}
+
+/* This targets ONLY cards that sit inside your data intake panel */
+.panel.controls .card {
+  margin-top: 40px;
+}
+
+.notes {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.equation {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(227, 210, 180, 0.45);
+  border: 1px solid rgba(195, 166, 122, 0.4);
+  font-family: "Cormorant Garamond", serif;
+  font-size: 1.05rem;
+  margin-bottom: 8px;
+}
+
+.radio-group {
+  display: grid;
+  gap: 8px;
+  font-size: 0.95rem;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.details summary {
+  cursor: pointer;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.details[open] summary {
+  margin-bottom: 8px;
+}
+
+.output .map {
+  position: relative;
+  border-radius: 18px;
+  background: linear-gradient(145deg, #14232d, #274552, #4b6e60);
+  overflow: hidden;
+  height: 360px;
+  margin-bottom: 20px;
+}
+
+.map svg {
+  width: 100%;
+  height: 100%;
+}
+
+.map-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fef5e6;
+  font-weight: 500;
+  background: rgba(9, 14, 22, 0.55);
+  z-index: 2;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.stat {
+  background: rgba(255, 255, 255, 0.66);
+  border-radius: 14px;
+  padding: 14px;
+  border: 1px solid rgba(37, 70, 55, 0.18);
+}
+
+.quality-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.photo-credit {
+  margin: 20px 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-align: right;
+}
+
+.photo-credit a {
+  color: var(--forest);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.photo-credit a:hover {
+  text-decoration: underline;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes drift {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(18px);
+  }
+}
+
+@media (max-width: 1000px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .field-group {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+.photo-credit {
+  position: fixed;
+  bottom: 12px;
+  right: 16px;
+  z-index: 9999;
+  /* Forces it above all background/glass containers */
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+/* Ensure the links inside are legible too! */
+.photo-credit a {
+  color: var(--moss);
+  text-decoration: underline;
+}

@@ -1,0 +1,70 @@
+LBS Project
+
+Please help me built a website for this project: 
+
+4. Semantic Integration of "Animal Traits"
+A recent research gap identified in 2025/2026 is the lack of integration between trait databases (body size, wing shape) and tracking data.
+
+The Project Idea: A "Universal Translator" for migration.
+
+How it works: When a user uploads tracking data, the LBS doesn't just show the path; it calculates a "Cost of Transport" layer. Using remote sensing (slope of terrain, wind resistance), it shows how much energy that specific individual (based on its AVONET data) is spending to move through that specific pixel of data. Dont worry about complex API's for remote sensing data yet. Lets get a solid foundation going locally first. 
+
+A Specific Suggestion to Start:
+
+
+We can test the website/make adjustments using a single bird from the eagle_3980 file (make sure to clean it). 
+Traits: Their morphology is extremely well-documented in literature because they are the "lab rats" of soaring flight.
+
+The Goal: You can easily find their average mass and wing area to calculate the "Power Curve" I mentioned earlier.
+
+The "Universal Translator" Logic:
+Your project's value isn't that you found a perfect dataset—it's that you built the code that allows a user to:
+
+Upload a Movebank file.
+
+Select a species.
+
+Automatically pull that species' traits from a database (AVONET).
+
+Calculate the energy cost.
+
+
+So first thing to ask user is: how good is your data? (how much information do you have to input into the calculation?)
+
+If you have all required variables you get better calculation otherwise you will get averages or estimates, this provides two different routes.
+Lets focus on website stucture and calculation accuracy and setup. However keep in mind the website will ultimate not only display numbers of cost transport but beautiful , complex migration routes representing the data. 
+
+
+https://rdrr.io/cran/rNOMADS/
+
+Sources:
+
+https://figshare.com/s/b990722d72a26b5bfead
+
+https://www.movebank.org/cms/webapp?gwt_fragment=page=studies,path=study20873986
+
+https://onlinelibrary.wiley.com/doi/10.1111/ele.70297
+
+
+The "Cool Visuals" (The Render):
+The Base Map: Use a 3D terrain map (like Mapbox GL or CesiumJS).
+
+The Trajectories: Instead of flat lines, render trajectories as colored, translucent "ribbons" or "tubes" suspended in the sky (Figure 2, Figure 3).
+
+The Visual Variables:
+
+Color (Hue): Represents the species class (e.g., Raptors are red ribbons, Songbirds are blue).
+
+Color (Opacity/Glow): Represents population density. Where multiple trajectories intersect or cluster, the ribbons glow intensely, forming a "heat mesh" in the air (Figure 1, Figure 8).
+
+Ribbon Width: Represents the velocity of the flow. Fast-moving migrations appear as sleek, narrow ribbons; slower flows are wide and diffuse.
+
+The Dynamic Element: Users can slide a time-bar to see how these 3D structures "shift and weave" from spring to autumn
+
+
+https://onlinelibrary.wiley.com/doi/10.1111/ele.70297
+
+
+
+
+
