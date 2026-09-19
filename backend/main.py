@@ -220,8 +220,7 @@ async def upload_track(
     }
 
 
-# Mount frontend AFTER all /api routes so static files don't shadow the API.
-# Served at /static/ — HTML pages have explicit routes below.
+# Mount frontend assets after API and HTML routes so static files do not shadow them.
 app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="frontend")
 app.mount("/data", StaticFiles(directory=str(DATA_DIR)), name="data")
 
@@ -239,3 +238,6 @@ def index_html() -> str:
 @app.get("/visualize.html", response_class=FileResponse)
 def visualize() -> str:
     return str(FRONTEND_DIR / "visualize.html")
+
+
+app.mount("/", StaticFiles(directory=str(FRONTEND_DIR)), name="frontend_root")
