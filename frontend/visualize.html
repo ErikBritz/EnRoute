@@ -135,7 +135,7 @@
     function buildLayers(visible) {
       const baseTile = new deck.TileLayer({
         id: "basemap",
-        data: "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+        data: "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png?api_key=cb1_3qdg_1_c17b164e968c71c8e3dc6452",
         minZoom: 0, maxZoom: 19, tileSize: 256,
         renderSubLayers: props => {
           const { bbox: { west, south, east, north } } = props.tile;
