@@ -20,7 +20,7 @@ const MAX_POINTS                = 2000;
 const STORAGE_KEY               = "lbsVisualizationPayload";
 
 // AVONET CSV is in the repo data/ folder, one level above frontend/
-const AVONET_URL = "../data/avonet_birds.csv";
+const AVONET_URL = "/data/avonet_birds.csv";
 
 // DOM
 const fileInput     = document.getElementById("file-input");

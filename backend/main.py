@@ -35,6 +35,7 @@ AVONET_PATH = BASE_DIR / "data" / "avonet_birds.csv"
 AVONET_DB: AvonetDatabase | None = None
 
 FRONTEND_DIR = BASE_DIR / "frontend"
+DATA_DIR = BASE_DIR / "data"
 
 # API routes are registered below.
 # Static frontend is mounted LAST so /api/* routes take priority.
@@ -222,6 +223,7 @@ async def upload_track(
 # Mount frontend AFTER all /api routes so static files don't shadow the API.
 # Served at /static/ — HTML pages have explicit routes below.
 app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="frontend")
+app.mount("/data", StaticFiles(directory=str(DATA_DIR)), name="data")
 
 
 @app.get("/", response_class=FileResponse)
